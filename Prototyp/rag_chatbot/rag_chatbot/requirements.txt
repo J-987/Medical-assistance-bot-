@@ -1,0 +1,40 @@
+# ── Web framework ─────────────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9       # file uploads
+
+# ── Config ────────────────────────────────────────────────────────────────
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-dotenv>=1.0.1
+
+# ── Ollama (LLM + embeddings) ─────────────────────────────────────────────
+ollama>=0.2.1
+
+# ── LangChain (chunking + semantic splitter) ──────────────────────────────
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-ollama>=0.1.0
+langchain-text-splitters>=0.2.0
+langchain-experimental>=0.0.60   # SemanticChunker
+
+# ── Weaviate v4 client ────────────────────────────────────────────────────
+weaviate-client>=4.6.0
+
+# ── PDF processing ────────────────────────────────────────────────────────
+pymupdf>=1.24.0                   # PyMuPDF / fitz  (fast fallback)
+
+# ── Unstructured.io (local, no API key needed) ────────────────────────────
+unstructured[pdf,docx,image]>=0.14.0
+# System deps (install separately):
+#   Ubuntu/Debian: sudo apt-get install -y poppler-utils tesseract-ocr libmagic1
+#   macOS:         brew install poppler tesseract libmagic
+
+# ── Marker (PDF → Markdown) ───────────────────────────────────────────────
+marker-pdf>=0.3.0
+# Note: marker downloads ~1 GB of Surya OCR models on first run.
+# Set MARKER_ENABLED=false in .env to skip.
+
+# ── Async utilities ───────────────────────────────────────────────────────
+httpx>=0.27.0
+aiofiles>=23.2.1

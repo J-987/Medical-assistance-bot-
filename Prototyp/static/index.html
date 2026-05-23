@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedRAG — Clinical Intelligence Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ── Reset & base ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #0d1117;
+    --bg2:         #161b24;
+    --bg3:         #1c2333;
+    --panel:       #1e2736;
+    --border:      #2a3347;
+    --border-light:#323d54;
+    --accent:      #2dd4bf;       /* teal */
+    --accent2:     #38bdf8;       /* sky */
+    --accent-dim:  rgba(45,212,191,.12);
+    --accent-glow: rgba(45,212,191,.25);
+    --red:         #f87171;
+    --amber:       #fbbf24;
+    --green:       #34d399;
+    --text:        #e2e8f0;
+    --text-2:      #94a3b8;
+    --text-3:      #4f5f7a;
+    --user-bg:     #1e3a5f;
+    --user-border: #2563eb44;
+    --bot-bg:      #1c2333;
+    --radius:      14px;
+    --radius-sm:   8px;
+    --shadow:      0 8px 32px rgba(0,0,0,.45);
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.6; }
+
+  /* ── Layout ───────────────────────────────────────────────────────── */
+  .shell { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────── */
+  .sidebar {
+    width: 280px; min-width: 280px; background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 0;
+    transition: width .25s ease;
+  }
+
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo-sub { font-size: 11px; color: var(--text-3); letter-spacing: .06em; text-transform: uppercase; padding-left: 46px; }
+
+  .new-chat-btn {
+    margin: 16px 20px 0; padding: 10px 16px;
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    border-radius: var(--radius-sm); color: var(--accent);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: all .2s; letter-spacing: .02em;
+  }
+  .new-chat-btn:hover { background: var(--accent); color: var(--bg); }
+
+  /* Upload zone */
+  .upload-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .section-label { font-size: 10px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: .1em; margin-bottom: 10px; font-weight: 600; }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border-light); border-radius: var(--radius-sm);
+    padding: 16px 12px; text-align: center; cursor: pointer;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: var(--accent-dim); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 22px; margin-bottom: 6px; }
+  .upload-text { font-size: 12px; color: var(--text-2); }
+  .upload-hint { font-size: 10px; color: var(--text-3); margin-top: 3px; }
+
+  .upload-status {
+    margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 12px; display: none; align-items: center; gap: 8px;
+  }
+  .upload-status.loading { display: flex; background: var(--bg3); color: var(--text-2); }
+  .upload-status.success { display: flex; background: rgba(52,211,153,.1); color: var(--green); border: 1px solid rgba(52,211,153,.2); }
+  .upload-status.error   { display: flex; background: rgba(248,113,113,.1); color: var(--red);   border: 1px solid rgba(248,113,113,.2); }
+
+  /* Doc list */
+  .docs-section { padding: 0 20px 16px; flex: 1; overflow-y: auto; }
+  .docs-section::-webkit-scrollbar { width: 4px; }
+  .docs-section::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+
+  .doc-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border-radius: var(--radius-sm); margin-bottom: 4px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-2);
+    animation: slideIn .3s ease;
+  }
+  .doc-item .doc-icon { font-size: 14px; flex-shrink: 0; }
+  .doc-item .doc-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-item .doc-chunks { font-size: 10px; color: var(--text-3); flex-shrink: 0; }
+
+  /* Stats */
+  .stats-bar {
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 12px;
+  }
+  .stat { flex: 1; text-align: center; }
+  .stat-val { font-size: 16px; font-weight: 600; color: var(--accent); font-family: 'DM Mono', monospace; }
+  .stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+
+  /* ── Main chat ────────────────────────────────────────────────────── */
+  .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  .chat-topbar {
+    padding: 16px 28px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg2);
+  }
+  .chat-title { font-size: 14px; font-weight: 500; color: var(--text-2); }
+  .model-badge {
+    display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+    background: var(--bg3); border: 1px solid var(--border-light);
+    border-radius: 20px; font-size: 12px; color: var(--text-2);
+  }
+  .model-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+
+  /* Messages */
+  .messages {
+    flex: 1; overflow-y: auto; padding: 28px 0;
+    scroll-behavior: smooth;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg-wrap { padding: 4px 28px; animation: fadeUp .3s ease; }
+  .msg-wrap + .msg-wrap { margin-top: 4px; }
+
+  .msg {
+    max-width: 760px; margin: 0 auto;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+
+  .msg-avatar {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    margin-top: 2px;
+  }
+  .msg.user .msg-avatar { background: var(--user-bg); border: 1px solid var(--user-border); }
+  .msg.bot  .msg-avatar {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .msg-body { flex: 1; }
+  .msg-role { font-size: 11px; color: var(--text-3); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+
+  .msg-bubble {
+    padding: 14px 18px; border-radius: var(--radius);
+    font-size: 14.5px; line-height: 1.7;
+  }
+  .msg.user .msg-bubble {
+    background: var(--user-bg); border: 1px solid var(--user-border);
+    border-top-left-radius: 4px;
+  }
+  .msg.bot .msg-bubble {
+    background: var(--bot-bg); border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+
+  /* Sources */
+  .sources {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .source-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 11px;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text-3); cursor: default;
+    transition: all .15s;
+  }
+  .source-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .source-chip .src-score { font-family: 'DM Mono', monospace; font-size: 10px; }
+
+  /* Typing indicator */
+  .typing { display: flex; align-items: center; gap: 5px; padding: 14px 18px; }
+  .typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    animation: bounce .9s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+
+  /* Welcome screen */
+  .welcome {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px 28px; text-align: center;
+  }
+  .welcome-icon { font-size: 56px; margin-bottom: 20px;
+    filter: drop-shadow(0 0 20px var(--accent-glow)); }
+  .welcome h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 500;
+    margin-bottom: 10px; color: var(--text); }
+  .welcome p { color: var(--text-2); max-width: 480px; font-size: 14px; line-height: 1.7; }
+  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 24px; }
+  .suggestion {
+    padding: 9px 16px; border-radius: 20px; font-size: 13px;
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text-2);
+    cursor: pointer; transition: all .2s;
+  }
+  .suggestion:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Input bar ────────────────────────────────────────────────────── */
+  .input-area {
+    padding: 16px 28px 20px; border-top: 1px solid var(--border); background: var(--bg2);
+  }
+  .input-box {
+    max-width: 760px; margin: 0 auto;
+    background: var(--panel); border: 1px solid var(--border-light);
+    border-radius: var(--radius); display: flex; align-items: flex-end; gap: 10px;
+    padding: 10px 12px; transition: border-color .2s;
+  }
+  .input-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+  #query {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px;
+    resize: none; max-height: 140px; min-height: 24px; line-height: 1.5;
+    padding: 4px 0;
+  }
+  #query::placeholder { color: var(--text-3); }
+  #query::-webkit-scrollbar { width: 3px; }
+
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all .2s; box-shadow: 0 2px 8px var(--accent-glow);
+  }
+  .send-btn:hover { transform: scale(1.06); box-shadow: 0 4px 16px var(--accent-glow); }
+  .send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 17px; height: 17px; fill: var(--bg); }
+
+  .input-hint { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 8px; }
+
+  /* ── Animations ───────────────────────────────────────────────────── */
+  @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+  @keyframes bounce  { 0%,60%,100% { transform:translateY(0); } 30% { transform:translateY(-6px); } }
+  @keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+  @keyframes spin    { to { transform:rotate(360deg); } }
+
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+
+  /* Code in messages */
+  .msg-bubble code {
+    background: var(--bg); padding: 2px 6px; border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--accent2);
+  }
+
+  /* Latency badge */
+  .latency { font-size: 10px; color: var(--text-3); margin-top: 6px;
+    font-family: 'DM Mono', monospace; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">🩺</div>
+        <span class="logo-text">MedRAG</span>
+      </div>
+      <div class="logo-sub">Clinical Intelligence Assistant</div>
+      <button class="new-chat-btn" onclick="newChat()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New conversation
+      </button>
+    </div>
+
+    <div class="upload-section">
+      <div class="section-label">Upload Documents</div>
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.html" multiple onchange="handleUpload(this.files)" />
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Drop files or click to browse</div>
+        <div class="upload-hint">PDF · DOCX · TXT · MD · HTML</div>
+      </div>
+      <div class="upload-status" id="uploadStatus"></div>
+    </div>
+
+    <div class="docs-section" id="docList">
+      <div class="section-label">Indexed Documents</div>
+      <div id="docItems" style="color:var(--text-3);font-size:12px;padding:8px 0;">No documents yet</div>
+    </div>
+
+    <div class="stats-bar" id="statsBar">
+      <div class="stat">
+        <div class="stat-val" id="statChunks">—</div>
+        <div class="stat-label">Chunks</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statDocs">0</div>
+        <div class="stat-label">Docs</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statStatus">—</div>
+        <div class="stat-label">Status</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Chat area ─────────────────────────────────────────────────── -->
+  <main class="chat-area">
+    <div class="chat-topbar">
+      <span class="chat-title">Medical Knowledge Q&amp;A</span>
+      <div class="model-badge">
+        <div class="model-dot"></div>
+        <span id="modelLabel">llama3.2 · nomic-embed-text</span>
+      </div>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🔬</div>
+        <h2>Clinical Intelligence Ready</h2>
+        <p>Upload medical documents and ask questions. MedRAG retrieves relevant passages and generates precise, evidence-grounded answers.</p>
+        <div class="suggestions">
+          <div class="suggestion" onclick="useSuggestion(this)">What was the patient's primary diagnosis?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Summarise the lab results</div>
+          <div class="suggestion" onclick="useSuggestion(this)">What antibiotics were prescribed?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">What are the discharge instructions?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">List all current medications</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-box">
+        <textarea id="query" rows="1" placeholder="Ask a clinical question…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Enter to send · Shift+Enter for new line · Powered by Ollama + Weaviate</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let history = [];
+let docCount = 0;
+
+// ── Startup ────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch(`${API}/health`);
+    const d = await r.json();
+    document.getElementById('statChunks').textContent = d.chunk_count ?? 0;
+    document.getElementById('statStatus').textContent = d.status === 'ok' ? '✓' : '⚠';
+    document.getElementById('modelLabel').textContent =
+      `${d.version ? 'v' + d.version : ''} · Weaviate ${d.weaviate_reachable ? '✓' : '✗'}`;
+  } catch {
+    document.getElementById('statStatus').textContent = '✗';
+  }
+}
+init();
+
+// ── Upload ─────────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('uploadZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleUpload(e.dataTransfer.files); });
+
+async function handleUpload(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    await uploadFile(file);
+  }
+}
+
+async function uploadFile(file) {
+  const status = document.getElementById('uploadStatus');
+  status.className = 'upload-status loading';
+  status.innerHTML = `<div class="spinner"></div> Ingesting <b>${file.name}</b>…`;
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const r = await fetch(`${API}/ingest`, { method: 'POST', body: fd });
+    const d = await r.json();
+
+    if (d.status === 'completed') {
+      status.className = 'upload-status success';
+      status.innerHTML = `✓ <b>${file.name}</b> — ${d.total_chunks} chunks indexed`;
+      addDocItem(file.name, d.total_chunks, d.job_id);
+      docCount++;
+      document.getElementById('statDocs').textContent = docCount;
+      // refresh chunk count
+      init();
+    } else {
+      throw new Error(d.error || 'Ingestion failed');
+    }
+  } catch (err) {
+    status.className = 'upload-status error';
+    status.innerHTML = `✗ ${err.message}`;
+  }
+  setTimeout(() => { status.style.display = 'none'; }, 5000);
+}
+
+function addDocItem(name, chunks, jobId) {
+  const container = document.getElementById('docItems');
+  if (container.textContent === 'No documents yet') container.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'doc-item';
+  el.setAttribute('title', `Job: ${jobId}`);
+  el.innerHTML = `<span class="doc-icon">📋</span>
+    <span class="doc-name">${name}</span>
+    <span class="doc-chunks">${chunks}c</span>`;
+  container.appendChild(el);
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+}
+
+function useSuggestion(el) {
+  document.getElementById('query').value = el.textContent;
+  autoResize(document.getElementById('query'));
+  sendMessage();
+}
+
+function newChat() {
+  history = [];
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = `<div class="welcome" id="welcome">
+    <div class="welcome-icon">🔬</div>
+    <h2>Clinical Intelligence Ready</h2>
+    <p>Upload medical documents and ask questions. MedRAG retrieves relevant passages and generates precise, evidence-grounded answers.</p>
+    <div class="suggestions">
+      <div class="suggestion" onclick="useSuggestion(this)">What was the patient's primary diagnosis?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Summarise the lab results</div>
+      <div class="suggestion" onclick="useSuggestion(this)">What antibiotics were prescribed?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">What are the discharge instructions?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">List all current medications</div>
+    </div>
+  </div>`;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('query');
+  const query = input.value.trim();
+  if (!query) return;
+
+  // Hide welcome
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  // Add user message
+  appendMessage('user', query);
+  history.push({ role: 'user', content: query });
+  input.value = ''; input.style.height = 'auto';
+
+  // Disable send
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+
+  // Typing indicator
+  const typingId = appendTyping();
+
+  try {
+    const r = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, history: history.slice(0, -1), top_k: 5 })
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: 'Server error' }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+
+    const d = await r.json();
+    removeTyping(typingId);
+
+    appendMessage('bot', d.answer, d.sources, d.latency_ms);
+    history.push({ role: 'assistant', content: d.answer });
+
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage('bot', `⚠️ **Error:** ${err.message}\n\nMake sure documents are ingested and the server is running.`, [], null);
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+function appendMessage(role, text, sources = [], latency = null) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+
+  const avatar = role === 'user' ? '👤' : '🩺';
+  const label  = role === 'user' ? 'You' : 'MedRAG';
+
+  let sourcesHTML = '';
+  if (sources && sources.length) {
+    sourcesHTML = `<div class="sources">`;
+    sources.forEach(s => {
+      const pg = s.page_number ? ` · p.${s.page_number}` : '';
+      sourcesHTML += `<span class="source-chip" title="${escHtml(s.text_preview)}">
+        📄 ${escHtml(s.file_name)}${pg}
+        <span class="src-score">${(s.score * 100).toFixed(0)}%</span>
+      </span>`;
+    });
+    sourcesHTML += `</div>`;
+  }
+
+  let latencyHTML = latency !== null ? `<div class="latency">${latency.toFixed(0)} ms</div>` : '';
+
+  wrap.innerHTML = `<div class="msg ${role}">
+    <div class="msg-avatar">${avatar}</div>
+    <div class="msg-body">
+      <div class="msg-role">${label}</div>
+      <div class="msg-bubble">${formatText(text)}</div>
+      ${sourcesHTML}
+      ${latencyHTML}
+    </div>
+  </div>`;
+
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendTyping() {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  const id = 'typing-' + Date.now();
+  wrap.id = id; wrap.className = 'msg-wrap';
+  wrap.innerHTML = `<div class="msg bot">
+    <div class="msg-avatar">🩺</div>
+    <div class="msg-body">
+      <div class="msg-role">MedRAG</div>
+      <div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>
+    </div>
+  </div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatText(text) {
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+</script>
+</body>
+</html>
