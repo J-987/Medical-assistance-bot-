@@ -11,10 +11,83 @@ from typing import AsyncIterator
 import ollama
 
 from app.config import get_settings
+from app.domain.enums import ExplainMode
 from app.domain.models import ChatMessage
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+# ── Erklär-Modi (Scaffolding, DP4–7) ───────────────────────────────────────
+# Jede Stufe regelt das Hilfe-Level analog zur Zone of Proximal Development.
+
+_MODE_INSTRUCTIONS: dict[ExplainMode, str] = {
+    ExplainMode.EINFACH: (
+        "MODUS: EINFACH ERKLÄRT (maximale Unterstützung).\n"
+        "- Schreibe auf Sprachniveau A2: sehr kurze Sätze, nur Alltagswörter.\n"
+        "- Übersetze JEDEN Fachbegriff sofort in einfache Sprache; nutze viele "
+        "Analogien aus dem Alltag.\n"
+        "- Erkläre lieber etwas mehr und langsamer. Keine Abkürzungen ohne Erklärung."
+    ),
+    ExplainMode.STANDARD: (
+        "MODUS: STANDARD (Default).\n"
+        "- Schreibe auf Sprachniveau B1: klare, mittellange Sätze.\n"
+        "- Nenne den Fachbegriff und erkläre ihn direkt dahinter in Klammern.\n"
+        "- Strukturiere jede Aussage als: Was steht da? · Was bedeutet das? · "
+        "Was kann ich tun / fragen?"
+    ),
+    ExplainMode.DETAILLIERT: (
+        "MODUS: DETAILLIERT (geringe Unterstützung, mehr Tiefe).\n"
+        "- Behalte die medizinischen Originalbegriffe bei und ergänze eine "
+        "präzise Erklärung.\n"
+        "- Gib mehr Hintergrund und Zusammenhänge.\n"
+        "- Mache Quellenangaben (Dateiname/Abschnitt) im Text sichtbar."
+    ),
+}
+
+# Gemeinsame Leitplanken für ALLE Modi (DP1–3, DP9, DP10, „kein Diagnosetool").
+_BASE_RULES = (
+    "Du bist „Medi-Interpret“, eine verständliche Lesehilfe für medizinische "
+    "Dokumente (z. B. Arztbriefe, Befunde). Du bist KEIN Diagnose-Werkzeug und "
+    "gibst KEINE Therapieempfehlung. Du übersetzt und erklärst, damit die Person "
+    "ihr eigenes Dokument versteht und sich aufs Arztgespräch vorbereiten kann.\n\n"
+    "FESTE REGELN:\n"
+    "1. Antworte immer auf Deutsch.\n"
+    "2. Nutze AUSSCHLIESSLICH den unten stehenden KONTEXT. Erfinde nichts.\n"
+    "3. Wenn der Kontext etwas nicht hergibt, sage klar: „Dazu steht in deinem "
+    "Dokument nichts Eindeutiges.“ Spekuliere nicht.\n"
+    "4. Mache Unsicherheiten transparent und weise bei Bedeutung-für-mich-Fragen "
+    "darauf hin, das mit der Ärztin/dem Arzt zu klären.\n"
+    "5. Stelle keine Diagnose und sprich keine Behandlung aus.\n"
+)
+
+
+def build_rag_system_prompt(
+    context_chunks: list[str],
+    mode: ExplainMode = ExplainMode.STANDARD,
+) -> str:
+    """Baut den modusabhängigen, deutschen RAG-System-Prompt."""
+    context = "\n\n---\n\n".join(context_chunks)
+    mode_block = _MODE_INSTRUCTIONS.get(mode, _MODE_INSTRUCTIONS[ExplainMode.STANDARD])
+    return (
+        f"{_BASE_RULES}\n{mode_block}\n\n"
+        f"KONTEXT (Auszüge aus dem Dokument der Person):\n{context}"
+    )
+
+
+def build_checklist_system_prompt(context_chunks: list[str]) -> str:
+    """Prompt für die Fragen-Checkliste fürs Arztgespräch (DP11, „Apply“)."""
+    context = "\n\n---\n\n".join(context_chunks)
+    return (
+        f"{_BASE_RULES}\n"
+        "AUFGABE: Erstelle aus dem KONTEXT eine personalisierte Fragen-Checkliste "
+        "für das nächste Arztgespräch. Formuliere 5–8 konkrete Fragen, die die "
+        "Person ihrer Ärztin/ihrem Arzt stellen kann, um Unklarheiten zu klären "
+        "und ihre Behandlung zu verstehen.\n"
+        "FORMAT: Gib NUR die Fragen aus, eine pro Zeile, jeweils mit „- “ "
+        "beginnend, ohne Einleitung und ohne Schlusssatz. Verständliche Sprache.\n\n"
+        f"KONTEXT:\n{context}"
+    )
 
 
 def _to_ollama_messages(history: list[ChatMessage]) -> list[dict]:
@@ -98,11 +171,14 @@ class OllamaClient:
     # ── RAG system prompt ─────────────────────────────────────────────────
 
     @staticmethod
-    def build_rag_system_prompt(context_chunks: list[str]) -> str:
-        context = "\n\n---\n\n".join(context_chunks)
-        return (
-            "You are a helpful assistant. Answer the user's question using ONLY "
-            "the provided context below. If the context does not contain enough "
-            "information, say so clearly. Do not make up facts.\n\n"
-            f"CONTEXT:\n{context}"
-        )
+    def build_rag_system_prompt(
+        context_chunks: list[str],
+        mode: ExplainMode = ExplainMode.STANDARD,
+    ) -> str:
+        """Modusabhängiger deutscher RAG-Prompt (siehe Modulfunktion)."""
+        return build_rag_system_prompt(context_chunks, mode)
+
+    @staticmethod
+    def build_checklist_system_prompt(context_chunks: list[str]) -> str:
+        """Prompt für die Fragen-Checkliste fürs Arztgespräch."""
+        return build_checklist_system_prompt(context_chunks)

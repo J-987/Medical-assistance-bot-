@@ -43,3 +43,15 @@ class IngestStatus(str, Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ExplainMode(str, Enum):
+    """Scaffolding-Stufe der Erklärung (Wood, Bruner & Ross, 1976).
+
+    Regelt das Hilfe-Level analog zur Zone of Proximal Development:
+    von maximaler Unterstützung (EINFACH) bis geringer Unterstützung
+    mit Originalbegriffen (DETAILLIERT).
+    """
+    EINFACH = "einfach"        # Sprachniveau ~A2, kurze Sätze, viele Analogien
+    STANDARD = "standard"      # ~B1, Fachbegriffe werden erklärt (Default)
+    DETAILLIERT = "detailliert"  # Originalbegriffe + Erklärung, mehr Tiefe

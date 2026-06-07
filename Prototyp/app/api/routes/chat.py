@@ -15,7 +15,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_embedder, get_llm, get_store
-from app.api.schemas import ChatRequest, ChatResponse, SourceDoc
+from app.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    ChecklistRequest,
+    ChecklistResponse,
+    SourceDoc,
+)
 from app.config import get_settings
 from app.domain.models import ChatMessage
 
@@ -51,9 +57,9 @@ async def chat(
             detail="No relevant documents found. Please ingest some files first.",
         )
 
-    # 3. Build system prompt from retrieved chunks
+    # 3. Build system prompt from retrieved chunks (modusabhängig)
     context_texts = [h.chunk.text for h in hits]
-    system_prompt = llm.build_rag_system_prompt(context_texts)
+    system_prompt = llm.build_rag_system_prompt(context_texts, request.mode)
 
     # 4. LLM generation
     history = _build_history(request)
@@ -94,7 +100,7 @@ async def chat_stream(
         raise HTTPException(status_code=404, detail="No relevant documents found.")
 
     context_texts = [h.chunk.text for h in hits]
-    system_prompt = llm.build_rag_system_prompt(context_texts)
+    system_prompt = llm.build_rag_system_prompt(context_texts, request.mode)
     history = _build_history(request)
 
     async def token_generator():
@@ -121,4 +127,57 @@ async def chat_stream(
         token_generator(),
         media_type="text/event-stream",
         headers={"X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/checklist", response_model=ChecklistResponse)
+async def chat_checklist(
+    request: ChecklistRequest,
+    store=Depends(get_store),
+    embedder=Depends(get_embedder),
+    llm=Depends(get_llm),
+):
+    """Generiert aus dem indexierten Befund eine Fragen-Checkliste fürs Arztgespräch."""
+    t0 = time.perf_counter()
+
+    query_vec = await embedder.embed(request.query)
+    hits = store.search(query_vector=query_vec, top_k=request.top_k)
+    if not hits:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Keine relevanten Dokumente gefunden. Bitte zuerst einen Befund hochladen.",
+        )
+
+    context_texts = [h.chunk.text for h in hits]
+    system_prompt = llm.build_checklist_system_prompt(context_texts)
+
+    history = [ChatMessage(role="user", content=request.query)]
+    raw = await llm.chat(history, system_prompt=system_prompt)
+
+    # Antwort in einzelne Fragen zerlegen
+    questions = [
+        line.lstrip("-•*0123456789. ").strip()
+        for line in raw.splitlines()
+        if line.strip()
+    ]
+    questions = [q for q in questions if q.endswith("?") or len(q) > 15]
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+
+    sources = [
+        SourceDoc(
+            file_name=h.chunk.metadata.get("file_name", ""),
+            page_number=h.chunk.page_number,
+            chunk_index=h.chunk.chunk_index,
+            score=round(h.score, 4),
+            text_preview=h.chunk.text[:200],
+        )
+        for h in hits
+    ]
+
+    return ChecklistResponse(
+        questions=questions,
+        model_used=settings.chat_model.value,
+        sources=sources,
+        latency_ms=round(elapsed_ms, 1),
     )
