@@ -22,6 +22,7 @@ from app.config import get_settings
 from app.domain.enums import IngestStatus, LoaderType
 from app.domain.models import IngestJob
 from app.ingestion.chunking.semantic_chunker import Chunker
+from app.ingestion.deidentify import deidentify
 from app.ingestion.loaders.loader_router import LoaderRouter
 from app.llm.embeddings import OllamaEmbeddings
 from app.vectorstore.weaviate_store import WeaviateStore
@@ -70,6 +71,18 @@ class IngestionPipeline:
             )
             if not raw_doc.raw_text.strip():
                 raise ValueError("Loaded document is empty — check the file or loader.")
+
+            # 1b. De-Identifizierung (PII vor dem Einbetten entfernen)
+            if settings.deidentify_enabled:
+                raw_doc.raw_text, redactions = await asyncio.to_thread(
+                    deidentify, raw_doc.raw_text
+                )
+                raw_doc.metadata["deidentified"] = True
+                raw_doc.metadata["redactions"] = redactions
+                logger.info(
+                    "[%s] De-identified — %d Ersetzungen: %s",
+                    file_path.name, sum(redactions.values()), redactions,
+                )
 
             # 2. Chunk
             logger.info("[%s] Chunking …", file_path.name)

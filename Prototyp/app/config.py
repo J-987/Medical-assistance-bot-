@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     chunk_overlap: int = 64
     upload_dir: str = "uploads"
 
+    # ── Datenschutz / De-Identifizierung (DSGVO Art. 9) ──────────────────
+    deidentify_enabled: bool = True   # PII vor dem Einbetten entfernen
+
     # ── Retrieval ────────────────────────────────────────────────────────
     top_k: int = 5
     similarity_threshold: float = 0.70
