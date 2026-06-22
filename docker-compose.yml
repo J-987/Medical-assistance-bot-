@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.28.4
+    container_name: rag_weaviate
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # HTTP / REST / GraphQL
+      - "50051:50051" # gRPC
+    environment:
+      # ── Core ──────────────────────────────────────────────────────────
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"   # we supply our own embeddings via Ollama
+      ENABLE_MODULES: ""
+      CLUSTER_HOSTNAME: "node1"
+      # ── Limits ───────────────────────────────────────────────────────
+      LIMIT_RESOURCES: "false"
+      GOMEMLIMIT: "2GiB"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  weaviate_data:
+    driver: local

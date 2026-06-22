@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MedRAG — Medizinischer Nachsorge-Assistent</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Lora:ital,wght@0,500;1,400&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+--bg:#0a0e17;--bg2:#0f1521;--bg3:#141c2e;--panel:#192238;
+--border:#1e2d47;--border2:#253453;
+--accent:#00c9a7;--accent2:#3b9eff;--accentd:rgba(0,201,167,.12);--accentg:rgba(0,201,167,.2);
+--green:#22c55e;--greend:rgba(34,197,94,.12);
+--amber:#f59e0b;--amberd:rgba(245,158,11,.12);
+--red:#ef4444;--redd:rgba(239,68,68,.12);
+--text:#e2e8f0;--text2:#8899b5;--text3:#3d526e;
+--r:12px;--rs:8px;--shadow:0 8px 32px rgba(0,0,0,.5);
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-size:14px;line-height:1.6}
+
+/* layout */
+.shell{display:flex;height:100vh;overflow:hidden}
+
+/* sidebar */
+.sidebar{width:260px;min-width:260px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+
+.sidebar-top{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.logo-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-name{font-family:'Lora',serif;font-size:18px;font-weight:500;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-tagline{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding-left:44px}
+
+/* mode nav */
+.modes-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;padding:14px 16px 8px}
+.mode-list{padding:0 8px;flex-shrink:0}
+.mode-btn{width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--rs);border:none;background:transparent;color:var(--text2);font-family:'Sora',sans-serif;font-size:12.5px;cursor:pointer;transition:all .18s;text-align:left;margin-bottom:2px}
+.mode-btn:hover{background:var(--bg3);color:var(--text)}
+.mode-btn.active{background:var(--accentd);color:var(--accent);border:1px solid rgba(0,201,167,.2)}
+.mode-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+
+/* upload */
+.upload-zone{margin:10px 10px 0;border:1.5px dashed var(--border2);border-radius:var(--rs);padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--accentd)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-icon-wrap{font-size:20px;margin-bottom:4px}
+.upload-text{font-size:11.5px;color:var(--text2)}
+.upload-hint{font-size:10px;color:var(--text3);margin-top:2px}
+
+.upload-status{margin:8px 10px 0;padding:8px 10px;border-radius:var(--rs);font-size:11px;display:none;align-items:center;gap:8px}
+.upload-status.loading{display:flex;background:var(--bg3);color:var(--text2)}
+.upload-status.ok{display:flex;background:var(--greend);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.upload-status.err{display:flex;background:var(--redd);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+
+.docs-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600;padding:12px 16px 6px}
+.doc-list{padding:0 8px;flex:1;overflow-y:auto}
+.doc-list::-webkit-scrollbar{width:3px}
+.doc-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.doc-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:var(--rs);margin-bottom:3px;background:var(--bg3);border:1px solid var(--border);font-size:11.5px;color:var(--text2);animation:fadeUp .3s ease}
+.doc-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-chunks{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;flex-shrink:0}
+
+/* safety footer */
+.safety-bar{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2)}
+.safety-text{font-size:10px;color:var(--text3);text-align:center;line-height:1.5}
+.safety-text span{color:var(--amber)}
+
+/* privacy btn */
+.privacy-btn{width:calc(100% - 20px);margin:8px 10px 0;padding:7px;border-radius:var(--rs);background:transparent;border:1px solid var(--border);color:var(--text3);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;font-family:'Sora',sans-serif}
+.privacy-btn:hover{border-color:var(--accent2);color:var(--accent2)}
+
+/* chat area */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+/* topbar */
+.topbar{padding:14px 24px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-left{display:flex;flex-direction:column}
+.topbar-title{font-size:15px;font-weight:500;color:var(--text)}
+.topbar-sub{font-size:11px;color:var(--text3)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+
+/* depth selector */
+.depth-sel{display:flex;gap:4px;background:var(--bg3);padding:4px;border-radius:var(--rs);border:1px solid var(--border)}
+.depth-btn{padding:4px 10px;border-radius:6px;font-size:11px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-family:'Sora',sans-serif;transition:all .15s}
+.depth-btn.active{background:var(--accent);color:#000;font-weight:500}
+
+/* online dot */
+.status-dot{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+
+/* messages */
+.messages{flex:1;overflow-y:auto;padding:24px 0;scroll-behavior:smooth}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+.msg-wrap{padding:3px 24px;animation:fadeUp .3s ease}
+
+.msg{max-width:720px;margin:0 auto;display:flex;gap:12px;align-items:flex-start}
+
+.avatar{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;margin-top:2px}
+.msg.user .avatar{background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.25)}
+.msg.bot .avatar{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+
+.msg-body{flex:1}
+.msg-label{font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+
+/* bubbles */
+.bubble{padding:13px 16px;border-radius:var(--r);font-size:13.5px;line-height:1.75}
+.msg.user .bubble{background:rgba(59,158,255,.08);border:1px solid rgba(59,158,255,.15);border-top-left-radius:3px}
+.msg.bot .bubble{background:var(--panel);border:1px solid var(--border);border-top-left-radius:3px}
+
+/* answer cards */
+.card-grid{display:grid;gap:8px;margin-top:10px}
+.a-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:12px 14px}
+.a-card-title{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:6px;color:var(--accent)}
+.a-card-body{font-size:13px;color:var(--text2);line-height:1.65}
+
+/* lab badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.badge.normal{background:var(--greend);color:var(--green)}
+.badge.warn{background:var(--amberd);color:var(--amber)}
+.badge.high{background:var(--redd);color:var(--red)}
+
+/* checklist */
+.checklist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;transition:all .15s}
+.check-item:hover{border-color:var(--accent)}
+.check-item.done{opacity:.6;text-decoration:line-through}
+.check-box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.check-item.done .check-box{background:var(--accent);border-color:var(--accent);color:#000}
+.check-text{flex:1;font-size:13px}
+.check-prio{font-size:10px;padding:2px 7px;border-radius:10px}
+.prio-low{background:var(--greend);color:var(--green)}
+.prio-mid{background:var(--amberd);color:var(--amber)}
+.prio-high{background:var(--redd);color:var(--red)}
+.check-progress{font-size:11px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace}
+
+/* traffic lights */
+.traffic{display:grid;gap:8px;margin-top:10px}
+.tl-card{padding:12px 14px;border-radius:var(--rs);border-left:3px solid}
+.tl-green{background:var(--greend);border-color:var(--green)}
+.tl-amber{background:var(--amberd);border-color:var(--amber)}
+.tl-red{background:var(--redd);border-color:var(--red)}
+.tl-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.tl-green .tl-title{color:var(--green)}
+.tl-amber .tl-title{color:var(--amber)}
+.tl-red .tl-title{color:var(--red)}
+.tl-body{font-size:12.5px;color:var(--text2);line-height:1.6}
+.emergency-card{margin-top:10px;padding:14px 16px;background:var(--redd);border:1px solid var(--red);border-radius:var(--r);text-align:center}
+.emergency-title{font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px}
+.emergency-sub{font-size:12px;color:var(--text2)}
+
+/* question cards */
+.q-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.q-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;transition:all .15s}
+.q-item:hover,.q-item.sel{border-color:var(--accent2);background:rgba(59,158,255,.06)}
+.q-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s}
+.q-item.sel .q-check{background:var(--accent2);border-color:var(--accent2);color:#fff}
+.q-text{font-size:13px;color:var(--text2)}
+.q-tag{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* quiz cards */
+.quiz-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-top:10px}
+.quiz-q{font-size:13px;color:var(--text);margin-bottom:10px;font-weight:500}
+.quiz-options{display:flex;flex-direction:column;gap:6px}
+.quiz-opt{padding:8px 12px;border-radius:var(--rs);border:1px solid var(--border);font-size:12.5px;color:var(--text2);cursor:pointer;transition:all .15s;background:var(--bg2)}
+.quiz-opt:hover{border-color:var(--accent);color:var(--text)}
+.quiz-opt.correct{background:var(--greend);border-color:var(--green);color:var(--green)}
+.quiz-opt.wrong{background:var(--redd);border-color:var(--red);color:var(--red)}
+.quiz-feedback{margin-top:8px;font-size:12px;color:var(--text2);padding:8px 10px;background:var(--bg2);border-radius:var(--rs);display:none}
+
+/* health toggles */
+.health-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.health-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:12px}
+.health-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.health-name{font-size:12px;font-weight:500}
+.toggle{width:36px;height:20px;border-radius:10px;background:var(--border2);cursor:pointer;position:relative;transition:all .2s;border:none}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:all .2s}
+.toggle.on::after{left:19px}
+.health-data{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.health-status{font-size:10px;margin-top:4px}
+.connected{color:var(--green)}
+.disconnected{color:var(--text3)}
+
+/* source chips */
+.sources{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.src-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:default;transition:all .15s}
+.src-chip:hover{border-color:var(--accent);color:var(--accent)}
+.src-score{font-family:'DM Mono',monospace;font-size:10px}
+
+/* latency */
+.latency{font-size:10px;color:var(--text3);margin-top:5px;font-family:'DM Mono',monospace}
+
+/* typing */
+.typing{display:flex;align-items:center;gap:5px;padding:13px 16px}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:bounce .9s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+
+/* suggestions */
+.suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px;max-width:720px;margin-left:auto;margin-right:auto}
+.sug{padding:8px 14px;border-radius:20px;font-size:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .2s}
+.sug:hover{border-color:var(--accent);color:var(--accent);background:var(--accentd)}
+
+/* welcome */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.welcome-icon{font-size:48px;margin-bottom:16px}
+.welcome h2{font-family:'Lora',serif;font-size:24px;font-weight:500;margin-bottom:8px}
+.welcome p{color:var(--text2);max-width:440px;font-size:13px;line-height:1.7}
+
+/* demo bar */
+.demo-bar{padding:10px 24px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.demo-btn{padding:7px 16px;border-radius:var(--rs);background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#000;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s}
+.demo-btn:hover{opacity:.85}
+.demo-text{font-size:12px;color:var(--text3)}
+
+/* input */
+.input-area{padding:14px 24px 18px;border-top:1px solid var(--border);background:var(--bg2);flex-shrink:0}
+.input-box{max-width:720px;margin:0 auto;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);display:flex;align-items:flex-end;gap:8px;padding:9px 10px;transition:border-color .2s}
+.input-box:focus-within{border-color:var(--accent)}
+#query{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'Sora',sans-serif;font-size:13px;resize:none;max-height:120px;min-height:22px;line-height:1.5;padding:3px 0}
+#query::placeholder{color:var(--text3)}
+.send-btn{width:36px;height:36px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.send-btn:hover{transform:scale(1.05)}
+.send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.send-btn svg{width:15px;height:15px;fill:#000}
+.input-hint{text-align:center;font-size:10.5px;color:var(--text3);margin-top:6px}
+
+/* privacy modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:520px;max-width:90vw;max-height:80vh;overflow-y:auto;padding:28px}
+.modal-title{font-family:'Lora',serif;font-size:20px;font-weight:500;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+.privacy-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.priv-card{padding:12px;border-radius:var(--rs);border:1px solid var(--border)}
+.priv-card.yes{background:var(--greend);border-color:rgba(34,197,94,.2)}
+.priv-card.no{background:var(--redd);border-color:rgba(239,68,68,.2)}
+.priv-heading{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.priv-card.yes .priv-heading{color:var(--green)}
+.priv-card.no .priv-heading{color:var(--red)}
+.priv-item{font-size:11.5px;color:var(--text2);margin-bottom:5px;display:flex;align-items:flex-start;gap:6px}
+.modal-close{margin-top:20px;width:100%;padding:9px;border-radius:var(--rs);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:13px;cursor:pointer;font-family:'Sora',sans-serif;transition:all .2s}
+.modal-close:hover{border-color:var(--accent);color:var(--accent)}
+
+/* misc */
+.spinner{width:12px;height:12px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+code{background:var(--bg);padding:1px 5px;border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2)}
+strong{font-weight:600;color:var(--text)}
+
+.new-chat-btn{width:calc(100% - 20px);margin:12px 10px 0;padding:8px;border-radius:var(--rs);background:var(--accentd);border:1px solid rgba(0,201,167,.25);color:var(--accent);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;font-family:'Sora',sans-serif;font-weight:500}
+.new-chat-btn:hover{background:var(--accent);color:#000}
+.upload-timer{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);min-width:28px;text-align:right}
+.doc-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;transition:all .15s;line-height:1}
+.doc-del:hover{color:var(--red);background:var(--redd)}
+.upload-progress{height:2px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;display:none}
+.upload-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .3s;border-radius:2px}
+
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <div class="logo-mark">🩺</div>
+      <span class="logo-name">MedRAG</span>
+    </div>
+    <div class="logo-tagline">Medizinischer Nachsorge-Assistent</div>
+  </div>
+
+  <button class="new-chat-btn" onclick="newChat()">✚ Neues Gespräch</button>
+  <div class="modes-label" style="margin-top:10px">Modus wählen</div>
+  <div class="mode-list" id="modeList">
+    <button class="mode-btn active" data-mode="diagnosis" onclick="setMode('diagnosis')">
+      <span class="mode-icon">🔬</span> Diagnose erklären
+    </button>
+    <button class="mode-btn" data-mode="lab" onclick="setMode('lab')">
+      <span class="mode-icon">🧪</span> Laborwerte verstehen
+    </button>
+    <button class="mode-btn" data-mode="aftercare" onclick="setMode('aftercare')">
+      <span class="mode-icon">📋</span> Nachsorge planen
+    </button>
+    <button class="mode-btn" data-mode="warning" onclick="setMode('warning')">
+      <span class="mode-icon">⚠️</span> Warnzeichen verstehen
+    </button>
+    <button class="mode-btn" data-mode="doctor" onclick="setMode('doctor')">
+      <span class="mode-icon">👨‍⚕️</span> Arzttermin vorbereiten
+    </button>
+    <button class="mode-btn" data-mode="quiz" onclick="setMode('quiz')">
+      <span class="mode-icon">💡</span> Verständnis prüfen
+    </button>
+    <button class="mode-btn" data-mode="health" onclick="setMode('health')">
+      <span class="mode-icon">⌚</span> Gesundheitsdaten
+    </button>
+  </div>
+
+  <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.html" multiple onchange="handleUpload(this.files)" />
+      <div class="upload-icon-wrap">📄</div>
+      <div class="upload-text">Dokument hochladen</div>
+      <div class="upload-hint">PDF · DOCX · TXT</div>
+    </div>
+    <div class="upload-progress" id="uploadProgress"><div class="upload-progress-bar" id="uploadProgressBar"></div></div>
+    <div class="upload-status" id="uploadStatus"></div>
+  </div>
+
+  <div class="docs-label">Indexierte Dokumente</div>
+  <div class="doc-list" id="docList"><div style="color:var(--text3);font-size:11px;padding:6px 8px">Noch keine Dokumente</div></div>
+
+  <button class="privacy-btn" onclick="openPrivacy()">🔒 Datenschutz & Sicherheit</button>
+
+  <div class="safety-bar">
+    <div class="safety-text"><span>⚕️</span> Kein Ersatz für ärztliche Beratung.<br>Bei akuten Beschwerden sofort Arzt aufsuchen.</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="chat-area">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title" id="topbarTitle">Diagnose verständlich erklärt</div>
+      <div class="topbar-sub" id="topbarSub">Stellen Sie Fragen zu Ihren Diagnosen</div>
+    </div>
+    <div class="topbar-right">
+      <div class="depth-sel" id="depthSel">
+        <button class="depth-btn" onclick="setDepth('kurz')">Kurz</button>
+        <button class="depth-btn active" onclick="setDepth('einfach')">Einfach</button>
+        <button class="depth-btn" onclick="setDepth('detailliert')">Detailliert</button>
+        <button class="depth-btn" onclick="setDepth('medizinisch')">Medizinisch</button>
+      </div>
+      <div class="status-dot"><div class="dot"></div><span id="statusLabel">Verbunden</span></div>
+    </div>
+  </div>
+
+  <div class="demo-bar">
+    <button class="demo-btn" onclick="startDemo()">▶ Demo starten</button>
+    <span class="demo-text">Demonstrationsfall: Arterielle Hypertonie — Entlassungsbrief</span>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon" id="welcomeIcon">🔬</div>
+      <h2 id="welcomeTitle">Diagnose verständlich erklärt</h2>
+      <p id="welcomeDesc">Laden Sie Ihren Arztbrief oder Entlassungsbericht hoch und stellen Sie Fragen zu Ihrer Diagnose — in einfacher Sprache erklärt.</p>
+      <div class="suggestions" id="suggestions"></div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-box">
+      <textarea id="query" rows="1" placeholder="Frage nach einer Diagnose aus Ihrem Arztbrief…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">Enter zum Senden · Shift+Enter für neue Zeile</div>
+  </div>
+</main>
+</div>
+
+<!-- PRIVACY MODAL -->
+<div class="overlay" id="privacyOverlay" onclick="closePrivacy(event)">
+  <div class="modal">
+    <div class="modal-title">🔒 Datenschutz & Sicherheit</div>
+    <div class="modal-sub">Dieser Prototyp zeigt ein Datenschutz-by-Design-Konzept.</div>
+    <div class="privacy-grid">
+      <div class="priv-card yes">
+        <div class="priv-heading">✓ Was die App macht</div>
+        <div class="priv-item">✓ Quellenbasierte Antworten aus Ihren Dokumenten</div>
+        <div class="priv-item">✓ Lokale Verarbeitung — keine Cloud-KI</div>
+        <div class="priv-item">✓ Einwilligungsbasierte Nutzung</div>
+        <div class="priv-item">✓ Datenminimierung</div>
+        <div class="priv-item">✓ Jederzeit löschbar</div>
+        <div class="priv-item">✓ Transparente Quellenangaben</div>
+      </div>
+      <div class="priv-card no">
+        <div class="priv-heading">✗ Was die App nicht macht</div>
+        <div class="priv-item">✗ Keine eigenständige Diagnose</div>
+        <div class="priv-item">✗ Keine Therapieentscheidung</div>
+        <div class="priv-item">✗ Keine Weitergabe ohne Zustimmung</div>
+        <div class="priv-item">✗ Kein Ersatz für Arztgespräch</div>
+        <div class="priv-item">✗ Keine Garantie auf Vollständigkeit</div>
+        <div class="priv-item">✗ Kein Speichern ohne Einwilligung</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:var(--rs);font-size:11.5px;color:var(--text2)">
+      🔬 Alle Antworten basieren ausschließlich auf den von Ihnen hochgeladenen Dokumenten. Das Sprachmodell läuft lokal über Ollama. Es werden keine Daten an externe Server gesendet.
+    </div>
+    <button class="modal-close" onclick="closePrivacy()">Schließen</button>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8001';
+let currentMode = 'diagnosis';
+let currentDepth = 'einfach';
+let history = [];
+let docCount = 0;
+let checklistItems = [];
+
+const MODES = {
+  diagnosis: {
+    title: 'Diagnose verständlich erklärt',
+    sub: 'Stellen Sie Fragen zu Ihren Diagnosen',
+    placeholder: 'Frage nach einer Diagnose aus Ihrem Arztbrief…',
+    icon: '🔬',
+    suggestions: ['Was bedeutet diese Diagnose?','Ist das gefährlich?','Was muss ich beachten?','Wann muss ich zum Arzt?']
+  },
+  lab: {
+    title: 'Laborwerte einfach erklärt',
+    sub: 'Verstehen Sie Ihre Laborergebnisse',
+    placeholder: 'Frage nach Ihren Laborwerten…',
+    icon: '🧪',
+    suggestions: ['Fasse die Laborwerte zusammen','Welche Werte sind auffällig?','Was sollte ich ärztlich besprechen?','Was bedeutet dieser Wert?']
+  },
+  aftercare: {
+    title: 'Ihr Nachsorgeplan',
+    sub: 'Konkrete nächste Schritte nach der Entlassung',
+    placeholder: 'Frage, was Sie nach der Entlassung tun sollen…',
+    icon: '📋',
+    suggestions: ['Was sind meine nächsten Schritte?','Erstelle eine Checkliste','Wann ist Kontrolle nötig?','Welche Medikamente nehme ich?']
+  },
+  warning: {
+    title: 'Warnzeichen & Sicherheit',
+    sub: 'Erkennen Sie wichtige Warnsignale',
+    placeholder: 'Frage, welche Symptome gefährlich sein könnten…',
+    icon: '⚠️',
+    suggestions: ['Welche Symptome sind Warnzeichen?','Wann muss ich zum Arzt?','Was wäre ein Notfall?','Welche Beschwerden sind normal?']
+  },
+  doctor: {
+    title: 'Fragen für Ihren nächsten Arzttermin',
+    sub: 'Bereiten Sie sich optimal vor',
+    placeholder: 'Lass dir Fragen für deinen Arzttermin vorbereiten…',
+    icon: '👨‍⚕️',
+    suggestions: ['Welche Fragen soll ich stellen?','Was sollte ich mitbringen?','Welche Werte dokumentieren?','Wie oft Kontrolltermine?']
+  },
+  quiz: {
+    title: 'Verständnis prüfen',
+    sub: 'Testen Sie Ihr Wissen über Ihre Gesundheit',
+    placeholder: 'Starten Sie eine Verständnisprüfung…',
+    icon: '💡',
+    suggestions: ['Starte eine Frage zu meiner Diagnose','Was habe ich über Warnzeichen gelernt?','Prüfe mein Wissen zu Medikamenten','Quiz zu meinem Nachsorgeplan']
+  },
+  health: {
+    title: 'Gesundheitsdaten verbinden',
+    sub: 'Optionale Integration — Sie entscheiden',
+    placeholder: 'Fragen zu Gesundheitsdaten…',
+    icon: '⌚',
+    suggestions: ['Zeig meine Blutdruckwerte','Wie waren meine Schlafdaten?','Verbinde mein Gerät','Was bedeuten meine Werte?']
+  }
+};
+
+function setMode(mode) {
+  currentMode = mode;
+  const m = MODES[mode];
+  document.getElementById('topbarTitle').textContent = m.title;
+  document.getElementById('topbarSub').textContent = m.sub;
+  document.getElementById('query').placeholder = m.placeholder;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  const welcome = document.getElementById('welcome');
+  if (welcome) {
+    document.getElementById('welcomeIcon').textContent = m.icon;
+    document.getElementById('welcomeTitle').textContent = m.title;
+    renderSuggestions(m.suggestions);
+  }
+  history = [];
+}
+
+function renderSuggestions(sugs) {
+  const el = document.getElementById('suggestions');
+  el.innerHTML = sugs.map(s => `<div class="sug" onclick="useSug(this)">${s}</div>`).join('');
+}
+
+function setDepth(d) {
+  currentDepth = d;
+  document.querySelectorAll('.depth-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function useSug(el) {
+  document.getElementById('query').value = el.textContent;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function openPrivacy() { document.getElementById('privacyOverlay').classList.add('open'); }
+function closePrivacy(e) {
+  if (!e || e.target === document.getElementById('privacyOverlay')) {
+    document.getElementById('privacyOverlay').classList.remove('open');
+  }
+}
+
+// ── Upload ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('uploadZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); handleUpload(e.dataTransfer.files); });
+
+async function handleUpload(files) {
+  for (const f of files) await uploadFile(f);
+}
+
+async function uploadFile(file) {
+  const st = document.getElementById('uploadStatus');
+  const prog = document.getElementById('uploadProgress');
+  const bar = document.getElementById('uploadProgressBar');
+  st.className = 'upload-status loading';
+  st.innerHTML = '<div class="spinner"></div> <span id="uploadMsg">Wird verarbeitet…</span> <span class="upload-timer" id="uploadTimer">0s</span>';
+  prog.style.display = 'block';
+  bar.style.width = '0%';
+
+  let elapsed = 0;
+  const timerEl = () => document.getElementById('uploadTimer');
+  const msgEl = () => document.getElementById('uploadMsg');
+  const stages = [
+    {t:2, msg:'Dokument laden…', pct:'15%'},
+    {t:5, msg:'Text extrahieren…', pct:'35%'},
+    {t:10, msg:'Abschnitte erstellen…', pct:'55%'},
+    {t:20, msg:'Einbettungen berechnen…', pct:'75%'},
+    {t:40, msg:'Im Vektorspeicher ablegen…', pct:'90%'},
+  ];
+  const interval = setInterval(() => {
+    elapsed++;
+    if (timerEl()) timerEl().textContent = elapsed + 's';
+    const stage = stages.filter(s => elapsed >= s.t).pop();
+    if (stage) { if(msgEl()) msgEl().textContent = stage.msg; bar.style.width = stage.pct; }
+  }, 1000);
+
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch(`${API}/ingest`, { method: 'POST', body: fd });
+    const d = await r.json();
+    clearInterval(interval);
+    bar.style.width = '100%';
+    if (d.status === 'completed') {
+      st.className = 'upload-status ok';
+      st.innerHTML = `✓ ${file.name} — ${d.total_chunks} Abschnitte in ${elapsed}s`;
+      addDoc(file.name, d.total_chunks, d.job_id);
+      docCount++;
+    } else throw new Error(d.error || 'Fehler');
+  } catch(err) {
+    clearInterval(interval);
+    st.className = 'upload-status err';
+    st.innerHTML = `✗ ${err.message}`;
+    bar.style.width = '0%';
+  }
+  setTimeout(() => { st.style.display = 'none'; prog.style.display = 'none'; }, 6000);
+}
+
+const docRegistry = {};
+function addDoc(name, chunks, jobId) {
+  const list = document.getElementById('docList');
+  if (list.textContent.includes('Noch keine')) list.innerHTML = '';
+  const id = 'doc_' + Date.now();
+  docRegistry[id] = { name, jobId };
+  const el = document.createElement('div');
+  el.className = 'doc-item'; el.id = id;
+  el.innerHTML = `<span>📋</span><span class="doc-name">${esc(name)}</span><span class="doc-chunks">${chunks}c</span><button class="doc-del" onclick="deleteDoc('${id}')" title="Löschen">✕</button>`;
+  list.appendChild(el);
+}
+
+async function deleteDoc(id) {
+  const doc = docRegistry[id];
+  if (!doc) return;
+  if (!confirm('Dokument "' + doc.name + '" aus dem Vektorspeicher entfernen?')) return;
+  const el = document.getElementById(id);
+  if (el) el.style.opacity = '0.4';
+  try {
+    if (doc.jobId) {
+      await fetch(`${API}/ingest/${doc.jobId}`, { method: 'DELETE' });
+    }
+  } catch(e) { console.log('Delete API error:', e); }
+  if (el) el.remove();
+  delete docRegistry[id];
+  docCount = Math.max(0, docCount - 1);
+  const list = document.getElementById('docList');
+  if (!list.children.length) list.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:6px 8px">Noch keine Dokumente</div>';
+}
+
+// ── Send message ─────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('query');
+  const q = input.value.trim();
+  if (!q) return;
+
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  appendMsg('user', q);
+  history.push({ role: 'user', content: q });
+  input.value = ''; input.style.height = 'auto';
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  const tid = appendTyping();
+
+  try {
+    const modePrompt = buildModePrompt(q);
+    const r = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: modePrompt, history: history.slice(0, -1), top_k: 5 })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || `HTTP ${r.status}`); }
+    const d = await r.json();
+    removeTyping(tid);
+    appendBotAnswer(d.answer, d.sources, d.latency_ms);
+    history.push({ role: 'assistant', content: d.answer });
+  } catch(err) {
+    removeTyping(tid);
+    appendMsg('bot', `⚠️ Fehler: ${err.message}`);
+  }
+  btn.disabled = false;
+  input.focus();
+}
+
+function buildModePrompt(q) {
+  const depthInstructions = {
+    kurz: 'Antworte in 2-3 kurzen Sätzen.',
+    einfach: 'Erkläre in einfacher, verständlicher Sprache ohne Fachjargon.',
+    detailliert: 'Gib eine ausführliche Erklärung mit Hintergrundinformationen.',
+    medizinisch: 'Verwende medizinische Fachbegriffe und gib präzise klinische Informationen.'
+  };
+  const modeInstructions = {
+    diagnosis: 'Du erklärst medizinische Diagnosen verständlich. Strukturiere die Antwort mit: Was bedeutet die Diagnose, warum ist das wichtig, was sollte beachtet werden, wann ärztlich nachfragen.',
+    lab: 'Du erklärst Laborwerte. Weise auf auffällige Werte hin. Verwende vorsichtige Sprache: "sollte ärztlich eingeordnet werden". Stelle keine eigenständige Diagnose.',
+    aftercare: 'Du erstellst konkrete Nachsorgepläne. Liste konkrete Maßnahmen auf: Medikamente, Messungen, Termine, Lebensstil.',
+    warning: 'Du erklärst Warnzeichen. Kategorisiere in grün (normal), gelb (beobachten), rot (sofort handeln). Bei Notfallsymptomen weise klar auf sofortige Hilfe hin.',
+    doctor: 'Du hilfst bei der Vorbereitung auf Arzttermine. Erstelle eine Liste konkreter Fragen zu Medikamenten, Risiken, Kontrollen und Lebensstil.',
+    quiz: 'Du prüfst das Verständnis mit einfachen Fragen. Gib unterstützendes Feedback. Kein Prüfungsdruck.',
+    health: 'Du hilfst beim Verständnis von Gesundheitsdaten aus Wearables. Keine Diagnosen aus Gerätedaten. Nur Kontext und Dokumentation.'
+  };
+  return `${modeInstructions[currentMode]} ${depthInstructions[currentDepth]} Frage: ${q}`;
+}
+
+// ── Render answers ────────────────────────────────────────────────────────
+function appendBotAnswer(text, sources, latency) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+
+  let content = '';
+  if (currentMode === 'aftercare') {
+    content = renderAftercare(text);
+  } else if (currentMode === 'warning') {
+    content = renderWarning(text);
+  } else if (currentMode === 'doctor') {
+    content = renderDoctor(text);
+  } else if (currentMode === 'quiz') {
+    content = renderQuiz(text);
+  } else if (currentMode === 'health') {
+    content = renderHealth(text);
+  } else if (currentMode === 'lab') {
+    content = renderLab(text);
+  } else {
+    content = renderDiagnosis(text);
+  }
+
+  let srcHTML = '';
+  if (sources && sources.length) {
+    srcHTML = '<div class="sources">';
+    sources.forEach(s => {
+      const pg = s.page_number ? ` · S.${s.page_number}` : '';
+      srcHTML += `<span class="src-chip" title="${esc(s.text_preview)}">📄 ${esc(s.file_name)}${pg} <span class="src-score">${Math.round(s.score*100)}%</span></span>`;
+    });
+    srcHTML += '<span class="src-chip">📌 Aus Ihrem Dokument</span></div>';
+  }
+
+  wrap.innerHTML = `<div class="msg bot">
+    <div class="avatar">🩺</div>
+    <div class="msg-body">
+      <div class="msg-label">MedRAG</div>
+      <div class="bubble">${content}</div>
+      ${srcHTML}
+      <div class="latency">${latency ? latency.toFixed(0) + ' ms' : ''}</div>
+    </div>
+  </div>`;
+
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  addQuizButton(wrap);
+}
+
+function renderDiagnosis(text) {
+  return `<div class="card-grid">
+    <div class="a-card"><div class="a-card-title">🔍 Was bedeutet die Diagnose?</div><div class="a-card-body">${fmt(text)}</div></div>
+    <div class="a-card"><div class="a-card-title">⚕️ Warum ist das wichtig?</div><div class="a-card-body">Sprechen Sie mit Ihrem Arzt über die langfristigen Auswirkungen dieser Diagnose.</div></div>
+    <div class="a-card"><div class="a-card-title">📌 Was sollten Sie beachten?</div><div class="a-card-body">Halten Sie Ihre Kontrolltermine ein und nehmen Sie Medikamente wie verordnet.</div></div>
+    <div class="a-card"><div class="a-card-title">🩺 Wann ärztlich nachfragen?</div><div class="a-card-body">Bei neuen Symptomen oder Fragen zu Ihrer Diagnose wenden Sie sich an Ihren Arzt.</div></div>
+  </div>`;
+}
+
+function renderLab(text) {
+  return `<div class="card-grid">
+    <div class="a-card"><div class="a-card-title">📊 Kurze Zusammenfassung</div><div class="a-card-body">${fmt(text)}</div></div>
+    <div class="a-card"><div class="a-card-title">⚠️ Auffällige Werte</div><div class="a-card-body">
+      <span class="badge high">Auffällig</span> Bitte ärztlich einordnen lassen.<br><br>
+      <span style="font-size:11.5px;color:var(--text3)">Aus einem einzelnen Laborwert lässt sich keine sichere Diagnose ableiten.</span>
+    </div></div>
+    <div class="a-card"><div class="a-card-title">💬 Mit Ihrem Arzt besprechen</div><div class="a-card-body">Lassen Sie auffällige Werte beim nächsten Termin erklären und einordnen.</div></div>
+  </div>`;
+}
+
+function renderAftercare(text) {
+  const lines = text.split('\n').filter(l => l.trim().length > 5).slice(0, 6);
+  checklistItems = lines.map((l, i) => ({ text: l.replace(/^[-•*\d.]\s*/, ''), done: false, prio: i < 2 ? 'high' : i < 4 ? 'mid' : 'low' }));
+  return buildChecklist();
+}
+
+function buildChecklist() {
+  const prioLabel = { high: 'Wichtig', mid: 'Mittel', low: 'Niedrig' };
+  const prioClass = { high: 'prio-high', mid: 'prio-mid', low: 'prio-low' };
+  const done = checklistItems.filter(i => i.done).length;
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Ihr persönlicher Nachsorgeplan:</div>
+    <div class="checklist">`;
+  checklistItems.forEach((item, idx) => {
+    html += `<div class="check-item${item.done?' done':''}" onclick="toggleCheck(${idx})">
+      <div class="check-box">${item.done?'✓':''}</div>
+      <span class="check-text">${esc(item.text)}</span>
+      <span class="check-prio ${prioClass[item.prio]}">${prioLabel[item.prio]}</span>
+    </div>`;
+  });
+  html += `</div><div class="check-progress">${done} von ${checklistItems.length} erledigt</div>`;
+  return html;
+}
+
+function toggleCheck(idx) {
+  checklistItems[idx].done = !checklistItems[idx].done;
+  document.querySelectorAll('.msg.bot:last-of-type .bubble').forEach(b => {
+    if (b.querySelector('.checklist')) b.innerHTML = buildChecklist();
+  });
+}
+
+function renderWarning(text) {
+  return `<div class="traffic">
+    <div class="tl-card tl-green"><div class="tl-title">🟢 Grün — Normales Selbstmanagement</div><div class="tl-body">Nehmen Sie Medikamente wie verordnet. Dokumentieren Sie Ihre Werte. Halten Sie Kontrolltermine ein.</div></div>
+    <div class="tl-card tl-amber"><div class="tl-title">🟡 Gelb — Beobachten</div><div class="tl-body">${fmt(text)}</div></div>
+    <div class="tl-card tl-red"><div class="tl-title">🔴 Rot — Sofort handeln</div><div class="tl-body">Brustschmerz · Atemnot · Lähmungserscheinungen · Sprachprobleme · Starke Kopfschmerzen</div></div>
+    <div class="emergency-card"><div class="emergency-title">🚨 Notfallhinweis</div><div class="emergency-sub">Bei diesen Symptomen bitte sofort medizinische Hilfe suchen oder Notruf (112) anrufen.</div></div>
+  </div>`;
+}
+
+function renderDoctor(text) {
+  const questions = text.split('\n').filter(l => l.trim().length > 5 && (l.includes('?') || l.match(/^[-•*\d]/)));
+  const items = questions.slice(0, 7).map((q, i) => ({
+    text: q.replace(/^[-•*\d.]\s*/, ''),
+    tag: ['Medikament','Risiken','Kontrolle','Lebensstil','Klärung'][i % 5],
+    sel: false
+  }));
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Wählen Sie Fragen für Ihren Arzttermin:</div><div class="q-list">`;
+  items.forEach((item, i) => {
+    html += `<div class="q-item" id="qi${i}" onclick="toggleQ(${i})">
+      <div class="q-check" id="qc${i}"></div>
+      <div><div class="q-text">${esc(item.text)}</div><div class="q-tag">${item.tag}</div></div>
+    </div>`;
+  });
+  html += `</div><div style="display:flex;gap:8px;margin-top:10px">
+    <button onclick="exportQ()" style="flex:1;padding:8px;border-radius:var(--rs);background:var(--accentd);border:1px solid var(--accent);color:var(--accent);font-size:12px;cursor:pointer;font-family:'Sora',sans-serif">📤 Fragenliste exportieren</button>
+  </div>`;
+  return html;
+}
+
+function toggleQ(i) {
+  const el = document.getElementById('qi'+i);
+  const ch = document.getElementById('qc'+i);
+  el.classList.toggle('sel');
+  ch.textContent = el.classList.contains('sel') ? '✓' : '';
+}
+
+function exportQ() {
+  const selected = document.querySelectorAll('.q-item.sel .q-text');
+  if (!selected.length) { alert('Bitte wählen Sie zuerst Fragen aus.'); return; }
+  const text = Array.from(selected).map(el => '• ' + el.textContent).join('\n');
+  navigator.clipboard.writeText('Meine Fragen für den Arzttermin:\n\n' + text).then(() => alert('Fragenliste kopiert!'));
+}
+
+function renderQuiz(text) {
+  const questions = [
+    { q: 'Wann sollten Sie bei Brustschmerz oder Atemnot reagieren?', opts: ['Abwarten und beobachten', 'Sofort medizinische Hilfe suchen', 'Nur wenn es länger anhält'], correct: 1, fb: 'Richtig. Bei diesen Warnzeichen sofort handeln — notfalls Notruf 112 anrufen.' },
+    { q: 'Wie oft sollten Sie Ihren Blutdruck messen?', opts: ['Einmal pro Woche', 'Nur beim Arzt', 'Morgens und abends täglich'], correct: 2, fb: 'Korrekt. Regelmäßige Messungen helfen Ihrem Arzt, Ihren Verlauf besser einzuschätzen.' }
+  ];
+  const q = questions[Math.floor(Math.random() * questions.length)];
+  return `<div class="quiz-card">
+    <div class="quiz-q">${esc(q.q)}</div>
+    <div class="quiz-options">
+      ${q.opts.map((o, i) => `<div class="quiz-opt" onclick="answerQ(this,${i},${q.correct},'${esc(q.fb)}')">${o}</div>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="qfb"></div>
+  </div>`;
+}
+
+function answerQ(el, chosen, correct, fb) {
+  const opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(o => o.style.pointerEvents = 'none');
+  opts[correct].classList.add('correct');
+  if (chosen !== correct) el.classList.add('wrong');
+  const fbEl = document.getElementById('qfb') || el.parentElement.nextElementSibling;
+  if (fbEl) { fbEl.style.display = 'block'; fbEl.textContent = (chosen === correct ? '✓ ' : '✗ ') + fb; }
+}
+
+function renderHealth(text) {
+  const devices = [
+    { name: 'Apple Health', icon: '❤️', connected: false, data: 'Nicht verbunden' },
+    { name: 'Blutdruckmessgerät', icon: '💉', connected: true, data: '145/90 mmHg · heute 08:12' },
+    { name: 'Fitness-Tracker', icon: '⌚', connected: true, data: '4.200 Schritte · heute' },
+    { name: 'Schlafdaten', icon: '😴', connected: false, data: 'Nicht verbunden' }
+  ];
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Sie entscheiden, welche Daten eingebunden werden:</div><div class="health-grid">`;
+  devices.forEach((d, i) => {
+    html += `<div class="health-card">
+      <div class="health-header">
+        <div class="health-name">${d.icon} ${d.name}</div>
+        <button class="toggle${d.connected?' on':''}" id="ht${i}" onclick="toggleHealth(${i})"></button>
+      </div>
+      <div class="health-data" id="hd${i}">${d.data}</div>
+      <div class="health-status ${d.connected?'connected':'disconnected'}" id="hs${i}">${d.connected?'● Verbunden':'○ Nicht verbunden'}</div>
+    </div>`;
+  });
+  html += `</div><div style="margin-top:10px;font-size:11px;color:var(--text3);padding:8px 10px;background:var(--bg3);border-radius:var(--rs)">⚠️ Keine Diagnosen aus Gerätedaten. Nur Dokumentation und Kontextunterstützung.</div>`;
+  return html;
+}
+
+function toggleHealth(i) {
+  const btn = document.getElementById('ht'+i);
+  const st = document.getElementById('hs'+i);
+  btn.classList.toggle('on');
+  const on = btn.classList.contains('on');
+  st.textContent = on ? '● Verbunden' : '○ Nicht verbunden';
+  st.className = 'health-status ' + (on ? 'connected' : 'disconnected');
+}
+
+function addQuizButton(wrap) {
+  if (currentMode === 'quiz') return;
+  const body = wrap.querySelector('.msg-body');
+  const btn = document.createElement('button');
+  btn.textContent = '💡 Verständnis prüfen';
+  btn.style.cssText = 'margin-top:8px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;font-family:Sora,sans-serif;transition:all .2s';
+  btn.onmouseenter = () => btn.style.borderColor = 'var(--accent2)';
+  btn.onmouseleave = () => btn.style.borderColor = 'var(--border)';
+  btn.onclick = () => { setMode('quiz'); document.getElementById('query').value = 'Starte eine Verständnisprüfung'; sendMessage(); };
+  body.appendChild(btn);
+}
+
+// ── Demo ──────────────────────────────────────────────────────────────────
+async function startDemo() {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+
+  setMode('diagnosis');
+  appendMsg('user', 'Was bedeutet die Diagnose Arterielle Hypertonie?');
+  const tid = appendTyping();
+  await new Promise(r => setTimeout(r, 800));
+  removeTyping(tid);
+
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+  wrap.innerHTML = `<div class="msg bot">
+    <div class="avatar">🩺</div>
+    <div class="msg-body">
+      <div class="msg-label">MedRAG</div>
+      <div class="bubble">
+        <div class="card-grid">
+          <div class="a-card"><div class="a-card-title">🔍 Was bedeutet die Diagnose?</div><div class="a-card-body">Arterielle Hypertonie bedeutet, dass Ihr Blutdruck dauerhaft zu hoch ist — in Ihrem Fall mit Werten über 130/80 mmHg. Das Herz muss gegen einen erhöhten Widerstand in den Blutgefäßen pumpen.</div></div>
+          <div class="a-card"><div class="a-card-title">⚕️ Warum ist das wichtig?</div><div class="a-card-body">Langfristig erhöhter Blutdruck belastet Herz, Nieren und Blutgefäße und erhöht das Risiko für Herzinfarkt und Schlaganfall.</div></div>
+          <div class="a-card"><div class="a-card-title">📌 Was sollten Sie beachten?</div><div class="a-card-body">Nehmen Sie Ramipril und Amlodipin täglich wie verordnet ein. Messen Sie Blutdruck morgens und abends. Halten Sie den Kontrolltermin in 2 Wochen ein.</div></div>
+          <div class="a-card"><div class="a-card-title">🩺 Wann ärztlich nachfragen?</div><div class="a-card-body">Bei Kopfschmerzen, Sehstörungen, starkem Schwindel oder Blutdruckwerten über 180/110 sofort medizinische Hilfe suchen.</div></div>
+        </div>
+      </div>
+      <div class="sources"><span class="src-chip">📄 Demo-Dokument <span class="src-score">94%</span></span><span class="src-chip">📌 Aus Ihrem Dokument</span></div>
+      <div class="latency">Demo-Modus</div>
+    </div>
+  </div>`;
+  msgs.appendChild(wrap);
+
+  await new Promise(r => setTimeout(r, 500));
+  setMode('aftercare');
+  appendMsg('user', 'Erstelle meinen Nachsorgeplan nach der Entlassung');
+  const tid2 = appendTyping();
+  await new Promise(r => setTimeout(r, 700));
+  removeTyping(tid2);
+
+  checklistItems = [
+    { text: 'Blutdruck morgens messen (vor dem Frühstück)', done: false, prio: 'high' },
+    { text: 'Blutdruck abends messen (vor dem Schlafengehen)', done: false, prio: 'high' },
+    { text: 'Ramipril 5mg täglich morgens einnehmen', done: false, prio: 'high' },
+    { text: 'Amlodipin 5mg täglich morgens einnehmen', done: false, prio: 'high' },
+    { text: 'Kontrolltermin in 2 Wochen wahrnehmen', done: false, prio: 'mid' },
+    { text: 'Auffällige Symptome dokumentieren', done: false, prio: 'low' }
+  ];
+
+  const wrap2 = document.createElement('div');
+  wrap2.className = 'msg-wrap';
+  wrap2.innerHTML = `<div class="msg bot"><div class="avatar">🩺</div><div class="msg-body"><div class="msg-label">MedRAG</div><div class="bubble">${buildChecklist()}</div><div class="sources"><span class="src-chip">📄 Demo-Dokument <span class="src-score">91%</span></span></div></div></div>`;
+  msgs.appendChild(wrap2);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function appendMsg(role, text) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap';
+  const avatar = role === 'user' ? '👤' : '🩺';
+  const label = role === 'user' ? 'Sie' : 'MedRAG';
+  wrap.innerHTML = `<div class="msg ${role}">
+    <div class="avatar">${avatar}</div>
+    <div class="msg-body">
+      <div class="msg-label">${label}</div>
+      <div class="bubble">${fmt(text)}</div>
+    </div>
+  </div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendTyping() {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  const id = 'ty' + Date.now();
+  wrap.id = id; wrap.className = 'msg-wrap';
+  wrap.innerHTML = `<div class="msg bot"><div class="avatar">🩺</div><div class="msg-body"><div class="msg-label">MedRAG</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div></div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(text) {
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+
+function newChat() {
+  history = [];
+  const msgs = document.getElementById('messages');
+  const m = MODES[currentMode];
+  msgs.innerHTML = `<div class="welcome" id="welcome">
+    <div class="welcome-icon" id="welcomeIcon">${m.icon}</div>
+    <h2 id="welcomeTitle">${m.title}</h2>
+    <p id="welcomeDesc">Laden Sie Ihren Arztbrief hoch und stellen Sie Ihre Fragen.</p>
+    <div class="suggestions" id="suggestions"></div>
+  </div>`;
+  renderSuggestions(m.suggestions);
+}
+
+// Init suggestions
+renderSuggestions(MODES['diagnosis'].suggestions);
+
+// Health check
+fetch(`${API}/health`).then(r=>r.json()).then(d=>{
+  document.getElementById('statusLabel').textContent = d.status === 'ok' ? 'Verbunden' : 'Eingeschränkt';
+}).catch(()=>{ document.getElementById('statusLabel').textContent = 'Offline'; });
+</script>
+</body>
+</html>
