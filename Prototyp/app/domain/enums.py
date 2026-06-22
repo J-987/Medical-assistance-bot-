@@ -36,6 +36,10 @@ class ChatModel(str, Enum):
     PHI3 = "phi3"
     GEMMA2 = "gemma2"
     QWEN25 = "qwen2.5"
+    # Kleinere Modelle für Rechner mit wenig Speicher/RAM
+    LLAMA3_1B = "llama3.2:1b"      # ~1,3 GB
+    QWEN25_15B = "qwen2.5:1.5b"    # ~1,0 GB
+    QWEN25_05B = "qwen2.5:0.5b"    # ~0,4 GB
 
 
 class IngestStatus(str, Enum):

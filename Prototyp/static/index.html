@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MedRAG — Clinical Intelligence Assistant</title>
+<title>Medi-Interpret — Verständliche Lesehilfe</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" />
 <style>
   /* ── Reset & base ─────────────────────────────────────────────────── */
@@ -260,6 +260,17 @@
 
   .input-hint { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 8px; }
 
+  /* Modus-Leiste */
+  .mode-bar { max-width: 760px; margin: 0 auto 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .mode-bar label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; font-weight: 600; }
+  .mode-select { background: var(--panel); color: var(--text); border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); padding: 6px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; }
+  .mode-select:focus { outline: none; border-color: var(--accent); }
+  .checklist-btn { margin-left: auto; padding: 7px 14px; background: var(--accent-dim);
+    border: 1px solid var(--accent); border-radius: var(--radius-sm); color: var(--accent);
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s; }
+  .checklist-btn:hover { background: var(--accent); color: var(--bg); }
+
   /* ── Animations ───────────────────────────────────────────────────── */
   @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
   @keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
@@ -289,9 +300,9 @@
     <div class="sidebar-header">
       <div class="logo">
         <div class="logo-icon">🩺</div>
-        <span class="logo-text">MedRAG</span>
+        <span class="logo-text">Medi-Interpret</span>
       </div>
-      <div class="logo-sub">Clinical Intelligence Assistant</div>
+      <div class="logo-sub">Verständliche Lesehilfe</div>
       <button class="new-chat-btn" onclick="newChat()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New conversation
@@ -333,7 +344,7 @@
   <!-- ── Chat area ─────────────────────────────────────────────────── -->
   <main class="chat-area">
     <div class="chat-topbar">
-      <span class="chat-title">Medical Knowledge Q&amp;A</span>
+      <span class="chat-title">Befund verstehen</span>
       <div class="model-badge">
         <div class="model-dot"></div>
         <span id="modelLabel">llama3.2 · nomic-embed-text</span>
@@ -342,27 +353,36 @@
 
     <div class="messages" id="messages">
       <div class="welcome" id="welcome">
-        <div class="welcome-icon">🔬</div>
-        <h2>Clinical Intelligence Ready</h2>
-        <p>Upload medical documents and ask questions. MedRAG retrieves relevant passages and generates precise, evidence-grounded answers.</p>
+        <div class="welcome-icon">🩺</div>
+        <h2>Bereit, Ihren Befund zu erklären</h2>
+        <p>Laden Sie einen Arztbrief oder Befund hoch und stellen Sie Fragen. Medi-Interpret erklärt verständlich — im Modus Ihrer Wahl — und nennt die Quellen.</p>
         <div class="suggestions">
-          <div class="suggestion" onclick="useSuggestion(this)">What was the patient's primary diagnosis?</div>
-          <div class="suggestion" onclick="useSuggestion(this)">Summarise the lab results</div>
-          <div class="suggestion" onclick="useSuggestion(this)">What antibiotics were prescribed?</div>
-          <div class="suggestion" onclick="useSuggestion(this)">What are the discharge instructions?</div>
-          <div class="suggestion" onclick="useSuggestion(this)">List all current medications</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Was bedeutet Vorhofflimmern?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Was heißt LVEF 48 %?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Wofür ist eine Blutverdünnung (OAK)?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Was sagt der HbA1c-Wert aus?</div>
+          <div class="suggestion" onclick="useSuggestion(this)">Was ist eine COPD?</div>
         </div>
       </div>
     </div>
 
     <div class="input-area">
+      <div class="mode-bar">
+        <label for="mode">Erklär-Modus</label>
+        <select id="mode" class="mode-select">
+          <option value="einfach">Einfach erklärt (A2)</option>
+          <option value="standard" selected>Standard (B1)</option>
+          <option value="detailliert">Detailliert</option>
+        </select>
+        <button class="checklist-btn" onclick="requestChecklist()">🗒️ Fragen-Checkliste</button>
+      </div>
       <div class="input-box">
-        <textarea id="query" rows="1" placeholder="Ask a clinical question…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <textarea id="query" rows="1" placeholder="Frage zu Ihrem Befund stellen…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">
           <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
         </button>
       </div>
-      <div class="input-hint">Enter to send · Shift+Enter for new line · Powered by Ollama + Weaviate</div>
+      <div class="input-hint">Enter zum Senden · Shift+Enter für neue Zeile · Lokal mit Ollama + Weaviate</div>
     </div>
   </main>
 </div>
@@ -462,15 +482,15 @@ function newChat() {
   history = [];
   const msgs = document.getElementById('messages');
   msgs.innerHTML = `<div class="welcome" id="welcome">
-    <div class="welcome-icon">🔬</div>
-    <h2>Clinical Intelligence Ready</h2>
-    <p>Upload medical documents and ask questions. MedRAG retrieves relevant passages and generates precise, evidence-grounded answers.</p>
+    <div class="welcome-icon">🩺</div>
+    <h2>Bereit, Ihren Befund zu erklären</h2>
+    <p>Laden Sie einen Arztbrief oder Befund hoch und stellen Sie Fragen. Medi-Interpret erklärt verständlich — im Modus Ihrer Wahl — und nennt die Quellen.</p>
     <div class="suggestions">
-      <div class="suggestion" onclick="useSuggestion(this)">What was the patient's primary diagnosis?</div>
-      <div class="suggestion" onclick="useSuggestion(this)">Summarise the lab results</div>
-      <div class="suggestion" onclick="useSuggestion(this)">What antibiotics were prescribed?</div>
-      <div class="suggestion" onclick="useSuggestion(this)">What are the discharge instructions?</div>
-      <div class="suggestion" onclick="useSuggestion(this)">List all current medications</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Was bedeutet Vorhofflimmern?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Was heißt LVEF 48 %?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Wofür ist eine Blutverdünnung (OAK)?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Was sagt der HbA1c-Wert aus?</div>
+      <div class="suggestion" onclick="useSuggestion(this)">Was ist eine COPD?</div>
     </div>
   </div>`;
 }
@@ -497,10 +517,11 @@ async function sendMessage() {
   const typingId = appendTyping();
 
   try {
+    const mode = document.getElementById('mode').value;
     const r = await fetch(`${API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, history: history.slice(0, -1), top_k: 5 })
+      body: JSON.stringify({ query, history: history.slice(0, -1), top_k: 5, mode })
     });
 
     if (!r.ok) {
@@ -521,6 +542,35 @@ async function sendMessage() {
 
   btn.disabled = false;
   input.focus();
+}
+
+async function requestChecklist() {
+  const welcome = document.getElementById('welcome');
+  if (welcome) welcome.remove();
+  appendMessage('user', '🗒️ Fragen-Checkliste fürs Arztgespräch erstellen');
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  const typingId = appendTyping();
+  try {
+    const r = await fetch(`${API}/chat/checklist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'Erstelle eine Fragen-Checkliste für mein nächstes Arztgespräch.' })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({ detail: 'Server error' }));
+      throw new Error(err.detail || `HTTP ${r.status}`);
+    }
+    const d = await r.json();
+    removeTyping(typingId);
+    const list = (d.questions || []).map(q => `- ${q}`).join('\n');
+    appendMessage('bot', `**Fragen für Ihr Arztgespräch:**\n${list || 'Es konnten keine Fragen erzeugt werden.'}`, d.sources, d.latency_ms);
+    history.push({ role: 'assistant', content: 'Fragen-Checkliste erstellt.' });
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage('bot', `⚠️ **Fehler:** ${err.message}\n\nBitte zuerst einen Befund hochladen oder den Korpus indexieren.`, [], null);
+  }
+  btn.disabled = false;
 }
 
 function appendMessage(role, text, sources = [], latency = null) {
