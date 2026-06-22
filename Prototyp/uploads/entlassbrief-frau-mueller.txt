@@ -1,0 +1,64 @@
+ENTLASSUNGSBRIEF
+Klinik für Innere Medizin / Kardiologie
+Klinikum Musterstadt, Station 4A
+
+FIKTIVES DOKUMENT – frei erfunden, keine echten Patientendaten.
+
+Patient: Müller, Margarete
+Geburtsdatum: 03.11.1958
+Patienten-ID: KM-2026-044821
+Aufnahme: 02.06.2026
+Entlassung: 09.06.2026
+Behandelnder Arzt: Dr. med. Stefan Berger
+Krankenkasse: Beispielkasse
+Telefon: 0521 4471230
+
+
+1. Diagnosen (ICD-10)
+
+I48.0  Paroxysmales Vorhofflimmern, erstdiagnostiziert
+I10    Arterielle Hypertonie, primär – aktuell nicht optimal eingestellt
+E11.9  Diabetes mellitus Typ 2 – HbA1c 7,6 %
+E78.5  Hyperlipidämie
+
+
+2. Anamnese
+
+Frau Müller stellte sich mit seit zwei Tagen bestehendem Herzstolpern, innerer
+Unruhe und Luftnot bei leichter Belastung vor. Keine Brustschmerzen. Vorbekannt
+sind Bluthochdruck und ein Diabetes mellitus Typ 2, behandelt mit Tabletten.
+Die Patientin berichtet, ihre Blutdruckwerte zu Hause nicht regelmäßig zu messen.
+
+
+3. Untersuchungsbefunde
+
+Aufnahme-EKG: absolute Arrhythmie bei Vorhofflimmern, Herzfrequenz 112/min.
+Blutdruck bei Aufnahme: 158/94 mmHg.
+Echokardiografie (TTE): LVEF 55 % (normale Pumpfunktion), keine relevanten
+Klappenfehler, diastolische Dysfunktion Grad I.
+Labor: HbA1c 7,6 %, LDL-Cholesterin erhöht, Elektrolyte im Normbereich,
+Schilddrüsenwerte unauffällig.
+
+
+4. Beurteilung
+
+Erstdiagnose eines paroxysmalen Vorhofflimmerns bei vorbestehender, derzeit
+unzureichend eingestellter arterieller Hypertonie. Der Langzeit-Blutzucker
+(HbA1c) liegt oberhalb des Zielbereichs. Unter Frequenzkontrolle im Verlauf
+stabiler Rhythmus, bei Entlassung beschwerdearm.
+
+
+5. Procedere und Empfehlungen
+
+- Beginn einer oralen Antikoagulation (OAK) mit Apixaban 5 mg 1-0-1 zur
+  Schlaganfallvorbeugung.
+- Betablocker (Bisoprolol) zur Frequenz- und Blutdruckkontrolle, Dosis ambulant
+  weiter anpassen (Titration).
+- Optimierung der Diabetes-Therapie, Ernährungsberatung empfohlen.
+- Blutdruck-Selbstmessung zu Hause, Dokumentation in einem Pass.
+- Statin zur Senkung des LDL-Cholesterins.
+- Hausärztliche Wiedervorstellung innerhalb einer Woche.
+- Kardiologische Reevaluation in 3 Monaten.
+
+Mit freundlichen kollegialen Grüßen
+Dr. med. Stefan Berger
